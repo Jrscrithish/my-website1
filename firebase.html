@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Student Mark Entry</title>
+  <style>
+    table {
+      border-collapse: collapse;
+    }
+    
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: left;
+    }
+    
+    th {
+      background-color: #f0f0f0;
+    }
+
+    h2 {
+      text-align: center;
+      padding: 10px;
+    }
+
+    #aa {
+      margin-top: 20px;
+      justify-content: center;
+      align-items: center;
+      display: flex;
+      margin-bottom: 30px;
+    }
+
+    #student-list-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  </style>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+  <script>
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+  </script>
+</head>
+<body>
+  <h2>Student Mark Entry</h2>
+  <div id="aa">
+    <label>Class:</label>
+    <select id="class-select">
+      <option value="">Select Class</option>
+      <option value="A">A</option>
+      <option value="A1">A1</option>
+      <option value="B">B</option>
+      <option value="C">C</option>
+      <option value="D">D</option>
+      <option value="E">E</option>
+      <option value="F">F</option>
+    </select>
+    <label>Subject:</label>
+    <select id="subject-select">
+      <option value="">Select Subject</option>
+      <option value="Math">Math</option>
+      <option value="Science">Science</option>
+      <option value="English">English</option>
+    </select>
+  </div>
+  <div id="student-list-container">
+    <!-- Student list will be populated here -->
+  </div>
+  <div id="result"></div>
+  
+  <script>
+    const classSelect = document.getElementById("class-select");
+    
+    classSelect.addEventListener("change", (e) => {
+      const selectedClass = e.target.value;
+      
+      // Example student data
+      const students = {
+        A: ["Ajay kumar", "Akash", "Anush", "Bharath", "Gokul raj", "Hari prasanna", "Kamesh", "Kishore", "Kanishwer"],
+        B: ["Alice Williams", "Mike Davis", "Emma Taylor"],
+        C: ["David Lee", "Sophia Patel", "Oliver Brown"]
+      };
+      
+      const studentListContainer = document.getElementById("student-list-container");
+      const resultDiv = document.getElementById("result");
+      studentListContainer.innerHTML = "";
+      
+      const studentListTable = document.createElement("table");
+      const tableHeaderRow = document.createElement("tr");
+      const tableHeaderCells = [
+        document.createElement("th"),
+        document.createElement("th"),
+        document.createElement("th")
+      ];
+      tableHeaderCells[0].textContent = "Student Name";
+      tableHeaderCells[1].textContent = "Present";
+      tableHeaderCells[2].textContent = "Marks";
+      
+      tableHeaderRow.appendChild(tableHeaderCells[0]);
+      tableHeaderRow.appendChild(tableHeaderCells[1]);
+      studentListTable.appendChild(tableHeaderRow);
+      
+      students[selectedClass].forEach((student) => {
+        const tableRow = document.createElement("tr");
+        const tableCells = [
+          document.createElement("td"),
+          document.createElement("td")
+        ];
+        tableCells[0].textContent = student;
+        
+        const markInput = document.createElement("input");
+        markInput.type = "number";
+        markInput.name = "marks[]";
+        markInput.value = "";
+        
+        tableCells[1].appendChild(markInput);
+        
+        tableRow.appendChild(tableCells[0]);
+        tableRow.appendChild(tableCells[1]);
+        
+        studentListTable.appendChild(tableRow);
+      });
+      
+      const submitButton = document.createElement("button");
+      submitButton.textContent = "Submit";
+      
+      studentListContainer.appendChild(studentListTable);
+      studentListContainer.appendChild(submitButton);
+      
+      // Add event listener to submit button
+      submitButton.addEventListener("click", async () => {
+        const markInputs = studentListTable.querySelectorAll("input[type='number']");
+        const totalStudents = students[selectedClass].length;
+        let totalMarks = 0;
+        let passCount = 0;
+
+        const marksToSubmit = []; // Array to hold marks for Firestore
+        
+        markInputs.forEach((markInput, index) => {
+          const mark = parseInt(markInput.value);
+          totalMarks += mark;
+          if (mark >= 35) {
+            passCount++;
+          }
+          // Push marks to the array
+          marksToSubmit.push({
+            name: students[selectedClass][index],
+            marks: mark
+          });
+        });
+
+        const averageMark = totalMarks / totalStudents;
+        const passPercentage = (passCount / totalStudents) * 100;
+
+        resultDiv.innerHTML = `
+          <p>Total Students: ${totalStudents}</p>
+          <p>Average Mark: ${averageMark.toFixed(2)}</p>
+          <p>Pass Percentage: ${passPercentage.toFixed(2)}%</p>
+          <p>Number of Fail: ${totalStudents - passCount}</p>
+          <p>Number of Pass: ${passCount}</p>
+        `;
+
+        // Add marks to Firestore
+        try {
+          await db.collection('studentMarks').add({
+            class: selectedClass,
+            marks: marksToSubmit,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          alert("Marks submitted successfully!");
+        } catch (error) {
+          alert("An error occurred: " + error.message);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
